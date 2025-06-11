@@ -1,36 +1,44 @@
+ 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Event } from '@eventix/shared';
+import dotenv from 'dotenv';
+dotenv.config();
+
+import { User, RegisterPayload } from '../services/userService';
+import { Event } from '@eventix/shared';  
 
 export class DatabaseService {
-  private readonly tableName = 'events';
+  private readonly eventsTableName = 'events';
+  private readonly usersTableName = 'users'; // שם הטבלה למשתמשים
   private supabase: SupabaseClient | null = null;
 
-  // Mapping between camelCase and snake_case
+   
   private readonly columnMapping = {
-    // camelCase to snake_case
     toSnake: {
       mealType: 'meal_type',
       expectedCount: 'expected_count',
       actualCount: 'actual_count',
       createdBy: 'created_by',
       createdAt: 'created_at',
-      updatedAt: 'updated_at'
+      updatedAt: 'updated_at',
+       
     } as const,
-    // snake_case to camelCase
     toCamel: {
       meal_type: 'mealType',
       expected_count: 'expectedCount',
-      actual_count: 'actualCount',
+      actual_count: 'actual_count',
       created_by: 'createdBy',
       created_at: 'createdAt',
-      updated_at: 'updatedAt'
+      updated_at: 'updatedAt',
+      
+      // google_id: 'googleId',
     } as const
   };
 
   private getClient(): SupabaseClient {
     if (!this.supabase) {
-      const supabaseUrl = process.env.SUPABASE_URL;
-      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+      const supabaseUrl = process.env.SUPABASE_URL as string;
+       
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY as string;
 
       if (!supabaseUrl || !supabaseKey) {
         throw new Error('Missing Supabase configuration. Please check your environment variables.');
@@ -45,10 +53,82 @@ export class DatabaseService {
     return this.getClient() !== null;
   }
 
-  async getAllEvents(): Promise<Event[]> {
+   
+  async createUser(userData: Omit<User, 'id' | 'created_at' | 'updated_at' | 'google_id'>): Promise<User> {
+    try {
+       
+      const userToInsert = {
+        name: userData.name, 
+        email: userData.email,
+        password_hash: userData.password_hash,  
+        language: userData.language,  
+      };
+
+      const { data, error } = await this.getClient()
+        .from(this.usersTableName)
+        .insert([userToInsert])
+        .select() 
+        .single(); 
+
+      if (error) {
+        console.error('Database error creating user:', error);
+        throw new Error('Failed to create user in database');
+      }
+
+       
+      return data as User;  
+    } catch (error) {
+      console.error('Error in createUser:', error);
+      throw error;
+    }
+  }
+
+   
+  async getUserByEmail(email: string): Promise<User | null> {
     try {
       const { data, error } = await this.getClient()
-        .from(this.tableName)
+        .from(this.usersTableName)
+        .select('*')
+        .eq('email', email)  
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return null; // משתמש לא נמצא
+        }
+        console.error('Database error fetching user by email:', error);
+        throw new Error('Failed to fetch user from database');
+      }
+
+      return data as User; 
+    } catch (error) {
+      console.error('Error in getUserByEmail:', error);
+      throw error;
+    }
+  }
+
+  // פונקציה לקבלת כל המשתמשים
+  async getAllUsers(): Promise<User[]> {
+    try {
+      const { data, error } = await this.getClient()
+        .from(this.usersTableName)
+        .select('*');
+
+      if (error) {
+        console.error('Database error fetching all users:', error);
+        throw new Error('Failed to fetch all users from database');
+      }
+      return (data || []) as User[];
+    } catch (error) {
+      console.error('Error in getAllUsers (database):', error);
+      throw error;
+    }
+  }
+
+   async getAllEvents(): Promise<Event[]> {
+    try {
+      const { data, error } = await this.getClient()
+        .from(this.eventsTableName)
         .select('*')
         .order('datetime', { ascending: true });
 
@@ -56,8 +136,7 @@ export class DatabaseService {
         console.error('Database error fetching events:', error);
         throw new Error('Failed to fetch events from database');
       }
-
-      return (data || []).map(event => 
+      return (data || []).map(event =>
         Object.fromEntries(
           Object.entries(event).map(([k, v]) => [
             (this.columnMapping.toCamel as Record<string, string>)[k] || k,
@@ -74,14 +153,14 @@ export class DatabaseService {
   async getEventById(id: string): Promise<Event | null> {
     try {
       const { data, error } = await this.getClient()
-        .from(this.tableName)
+        .from(this.eventsTableName)
         .select('*')
         .eq('id', id)
         .single();
 
       if (error) {
         if (error.code === 'PGRST116') {
-          return null; // Event not found
+          return null;
         }
         console.error('Database error fetching event:', error);
         throw new Error('Failed to fetch event from database');
@@ -109,7 +188,7 @@ export class DatabaseService {
       );
       
       const { data, error } = await this.getClient()
-        .from(this.tableName)
+        .from(this.eventsTableName)
         .insert([snakeCaseEvent])
         .select()
         .single();
@@ -131,13 +210,13 @@ export class DatabaseService {
     }
   }
 
-  // Initialize database with sample data if empty
   async initializeSampleData(): Promise<void> {
+     
     try {
       const events = await this.getAllEvents();
       
       if (events.length === 0) {
-        console.log('Initializing database with sample data...');
+        console.log('Initializing database with sample events...');
         
         const sampleEvents = [
           {
@@ -171,12 +250,10 @@ export class DatabaseService {
         for (const event of sampleEvents) {
           await this.createEvent(event);
         }
-        
-        console.log('Sample data initialized successfully');
+        console.log('Sample events initialized successfully');
       }
     } catch (error) {
       console.error('Failed to initialize sample data:', error);
-      // Don't throw the error, just log it
     }
   }
 }

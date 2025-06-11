@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Event } from '@eventix/shared';
-import { apiService } from './services/api';
+import { apiService } from './services/api';  
 import EventCard from './components/EventCard';
-import './App.css';
+import SignupForm from './components/SignupForm';  
+import './App.css';  
 
-function App() {
+function App() {  
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
@@ -16,6 +17,16 @@ function App() {
     checkHealth();
   }, []);
 
+   const checkHealth = async () => {
+    try {
+      const health = await apiService.checkHealth();
+      setHealthStatus(health.success ? 'healthy' : 'unhealthy');
+    } catch (err) {
+      setHealthStatus('unhealthy');
+    }
+  };
+
+  // פונקציה לטעינת אירועים מה-Backend
   const loadEvents = async () => {
     try {
       setLoading(true);
@@ -26,15 +37,6 @@ function App() {
       setError(err instanceof Error ? err.message : 'Failed to load events');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const checkHealth = async () => {
-    try {
-      const health = await apiService.checkHealth();
-      setHealthStatus(health.success ? 'healthy' : 'unhealthy');
-    } catch (err) {
-      setHealthStatus('unhealthy');
     }
   };
 
@@ -64,7 +66,12 @@ function App() {
       </header>
 
       <main style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-        {selectedEvent ? (
+        {/* הצגת טופס ההרשמה בחלק העליון של העמוד */}
+        <div style={{ marginBottom: '40px', padding: '20px', border: '1px solid #eee', borderRadius: '8px', backgroundColor: '#fdfdfd' }}>
+          <SignupForm />
+        </div>
+
+         {selectedEvent ? (
           <div>
             <button 
               onClick={clearSelection}
@@ -152,3 +159,4 @@ function App() {
 }
 
 export default App;
+ 
