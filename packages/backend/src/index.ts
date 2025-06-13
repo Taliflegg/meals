@@ -1,5 +1,5 @@
 import usersRouter from './routes/user';
-
+ 
 
 import dotenv from 'dotenv';
 // Load environment variables
@@ -53,3 +53,5 @@ app.listen(PORT, async () => {
     console.log('📝 Using mock data - Supabase not configured');
   }
 });
+
+ 

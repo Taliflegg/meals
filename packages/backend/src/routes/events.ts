@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { Event, EventsResponse, EventResponse } from '@eventix/shared';
 import { databaseService } from '../services/database';
 
+
 const router = Router();
 
 // Fallback mock data (used if database is not available)

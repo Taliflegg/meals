@@ -1,8 +1,11 @@
 import axios from 'axios';
 import { Event, EventsResponse, EventResponse } from '@eventix/shared';
+import { useEffect } from 'react';
 
 const API_URL = process.env.REACT_APP_API_URL;
 console.log('API_URL loaded from .env:', API_URL);
+
+
 
 const apiClient = axios.create({
   baseURL: API_URL,
@@ -46,3 +49,6 @@ export const apiService = {
     throw new Error(response.data.error || 'Failed to fetch event');
   },
 };
+
+
+

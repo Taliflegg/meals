@@ -44,7 +44,7 @@ export default function SignupForm() {
         language: data.language,  
       };
 
-     
+      // URL נכון ל-backend, פורט 3002 והנתיב /api/users/register
       const response = await fetch("http://localhost:3002/api/users/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -112,8 +112,7 @@ export default function SignupForm() {
             helperText={errors.confirmPassword?.message}
           />
 
-          {/* הוסף את שדה בחירת השפה כאן! */}
-          <TextField
+           <TextField
             label="שפה"
             select // זה הופך את TextField לתיבת בחירה
             fullWidth
