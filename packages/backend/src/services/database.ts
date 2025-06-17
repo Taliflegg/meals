@@ -40,7 +40,7 @@ export class DatabaseService {
     } as const
   };
 
-  private getClient(): SupabaseClient {
+ getClient(): SupabaseClient {
     if (!this.supabase) {
       const supabaseUrl = process.env.SUPABASE_URL as string;
       // ננסה להשתמש ב-SERVICE_ROLE_KEY אם קיים, אחרת ב-ANON_KEY

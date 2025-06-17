@@ -1,3 +1,4 @@
+ 
 import React from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -5,67 +6,78 @@ import * as yup from "yup";
 import {
   TextField,
   Button,
-  MenuItem,  
+  MenuItem,
   Box,
   Typography,
-  Paper
+  Paper,
 } from "@mui/material";
 
-// סכימת ולידציה עם Yup
+ 
 const schema = yup.object().shape({
   username: yup.string().required("נא להזין שם"),
   email: yup.string().email("אימייל לא תקין").required("נא להזין אימייל"),
   password: yup.string().min(6, "הסיסמה צריכה לפחות 6 תווים").required("נא להזין סיסמה"),
   confirmPassword: yup
     .string()
-    .oneOf([yup.ref("password")], "הסיסמאות לא תואמות")
+    .oneOf([yup.ref("password")], "הסיסמאות לא תואמות") // ודא ששדות הסיסמה זהים
     .required("נא לאשר את הסיסמה"),
-  language: yup.mixed<'he' | 'en'>().oneOf(['he', 'en']).required("יש לבחור שפה"), // זה השדה שדורש קלט
+  language: yup.mixed<'he' | 'en'>().oneOf(['he', 'en']).required("יש לבחור שפה"),
 });
 
-// טיפוסים
-type FormData = yup.InferType<typeof schema>;
+ type FormData = yup.InferType<typeof schema>;
 
 export default function SignupForm() {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
+   const {
+    register,  
+    handleSubmit,  
+    formState: { errors },  
   } = useForm<FormData>({
-    resolver: yupResolver(schema),
+    resolver: yupResolver(schema),  
   });
 
-  const onSubmit = async (data: FormData) => {
+ 
+   const onSubmit = async (data: FormData) => {
     try {
-      const payload = {
+       const payload = {
         username: data.username,
         email: data.email,
         password: data.password,
-        language: data.language,  
+        language: data.language,
       };
 
-      // URL נכון ל-backend, פורט 3002 והנתיב /api/users/register
-      const response = await fetch("http://localhost:3002/api/users/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+       const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:3001/api";
+      const registerEndpoint = `${apiUrl}/users/register`; // בניית הנתיב המלא לנקודת הקצה
+
+      const response = await fetch(registerEndpoint, {
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify(payload),  
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
+       if (!response.ok) {
+        const errorData = await response.json();  
         throw new Error(errorData.message || "שגיאה ברישום משתמש");
       }
 
-      const result = await response.json();
-      console.log("המשתמש נרשם בהצלחה:", result);
-      alert("המשתמש נרשם בהצלחה!"); // להצגה ויזואלית זמנית
+       const result = await response.json();  
+
+      console.log("המשתמש נרשם בהצלחה:", result.message);
+      console.log("טוקן שהתקבל:", result.token);
+      console.log("פרטי המשתמש שהתקבלו:", result.user);
+
+       localStorage.setItem('authToken', result.token);
+      localStorage.setItem('currentUser', JSON.stringify(result.user));
+
+        alert("ההרשמה בוצעה בהצלחה! הנך מחובר/ת."); // זמני
+
     } catch (error) {
-      console.error("שגיאה:", error);
-      alert(`שגיאה ברישום: ${error instanceof Error ? error.message : String(error)}`); // להצגת שגיאות ויזואלית זמנית
+      console.error("שגיאה ברישום:", error);
+       alert(`שגיאה ברישום: ${error instanceof Error ? error.message : String(error)}`); // זמני
     }
   };
 
   return (
+     
     <Box dir="rtl" sx={{ maxWidth: 500, margin: "50px auto" }}>
       <Paper sx={{ p: 4 }} elevation={3}>
         <Typography variant="h5" align="center" gutterBottom>
@@ -73,6 +85,7 @@ export default function SignupForm() {
         </Typography>
 
         <form onSubmit={handleSubmit(onSubmit)}>
+        
           <TextField
             label="שם"
             fullWidth
@@ -82,6 +95,7 @@ export default function SignupForm() {
             helperText={errors.username?.message}
           />
 
+           
           <TextField
             label="אימייל"
             type="email"
@@ -92,7 +106,7 @@ export default function SignupForm() {
             helperText={errors.email?.message}
           />
 
-          <TextField
+           <TextField
             label="סיסמה"
             type="password"
             fullWidth
@@ -102,7 +116,7 @@ export default function SignupForm() {
             helperText={errors.password?.message}
           />
 
-          <TextField
+           <TextField
             label="אישור סיסמה"
             type="password"
             fullWidth
@@ -114,13 +128,13 @@ export default function SignupForm() {
 
            <TextField
             label="שפה"
-            select // זה הופך את TextField לתיבת בחירה
+            select  
             fullWidth
             margin="normal"
             {...register("language")}
             error={!!errors.language}
             helperText={errors.language?.message}
-            defaultValue="he" // קבע ערך ברירת מחדל כדי למנוע ולידציה שגויה בהתחלה
+            defaultValue="he"  
           >
             <MenuItem value="he">עברית</MenuItem>
             <MenuItem value="en">English</MenuItem>
