@@ -1,53 +1,59 @@
  // packages/backend/src/routes/user.ts
 
-import * as express from 'express'; // ייבוא express כמודול, פותר בעיות טיפוסים
-import { Request, Response, NextFunction } from 'express'; // ייבוא טיפוסים ספציפיים ל-Express
-import { registerUser, getAllUsers } from '../services/userService'; // ייבוא פונקציות השירות
+import * as express from 'express'; // Import express as a module
+import { Request, Response, NextFunction } from 'express'; // Import specific Express types
+import { registerUser, getAllUsers } from '../services/userService'; // Import user service functions
 
-const router = express.Router(); // יצירת מופע של Express Router
+const router = express.Router(); // Create an Express Router instance
 
-// POST /api/users/register - נקודת קצה לרישום משתמש חדש
+// POST /api/users/register - User registration endpoint
 router.post('/register', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // שליפת הנתונים מגוף הבקשה
     const { username, email, password, language } = req.body;
 
-    // ולידציה בסיסית של שדות חובה
+    // Basic validation for required fields
     if (!username || !email || !password) {
       return res.status(400).json({ message: 'חסרים שדות חובה: שם משתמש, אימייל, סיסמה.' });
     }
 
-    // קריאה לפונקציית הרישום משכבת השירות
-    // מצפים לקבל בחזרה גם את אובייקט המשתמש וגם את הטוקן
+    // Call the registration service, expecting user data and a JWT token
     const { user, token } = await registerUser({ username, email, password, language });
 
-    // החזרת תגובת הצלחה עם הודעה, פרטי המשתמש והטוקן
+    // Set the JWT token as an HttpOnly cookie
+    res.cookie('authToken', token, {
+      httpOnly: true, // Prevents client-side JavaScript access (XSS protection)
+      secure: process.env.NODE_ENV === 'production', // Use HTTPS in production
+      // @ts-ignore // Temporarily ignore if 'sameSite' type is missing in your Express types
+      sameSite: 'Lax', // CSRF protection
+      maxAge: 3600000, // Cookie expiration: 1 hour (in milliseconds)
+    });
+
+    // Return success response with user details (token is in cookie)
     res.status(201).json({
       message: 'המשתמש נרשם בהצלחה!',
-      user: user, // פרטי המשתמש שנוצר
-      token: token, // טוקן הגישה החדש שנוצר
+      user: user,
     });
   } catch (error: any) {
-    console.error('שגיאה ברישום משתמש:', error); // הדפסת השגיאה ללוג השרת
+    console.error('Error during user registration:', error);
 
-    // טיפול בשגיאה ספציפית של "משתמש כבר קיים"
+    // Handle specific "user already exists" error
     if (error.message === "User already exists") {
       return res.status(409).json({ message: 'משתמש עם אימייל זה כבר קיים במערכת. אנא נסה אימייל אחר.' });
     }
 
-    // טיפול בשגיאות כלליות
+    // Handle generic server errors
     res.status(500).json({ message: error.message || 'שגיאה פנימית בשרת.' });
   }
 });
 
-// GET /api/users - נקודת קצה לקבלת כל המשתמשים (לדוגמה, למטרות בדיקה/ניהול)
+// GET /api/users - Endpoint to retrieve all users
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const users = await getAllUsers(); // קריאה לפונקציה משכבת השירות
+    const users = await getAllUsers(); // Call service to get all users
     res.json({ success: true, users });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message || 'שגיאה פנימית.' });
   }
 });
 
-export default router; // ייצוא הראוטר לשימוש ב-index.ts
+export default router; // Export the router for use in index.ts
